@@ -1,0 +1,6 @@
+<model name>,<mean accuracy> +- <accuracy std>
+<model name>,<mean accuracy> +- <accuracy std>
+<model name>,<mean accuracy> +- <accuracy std>
+----
+train time,<train time in seconds>
+predict time,<predict time in seconds>
