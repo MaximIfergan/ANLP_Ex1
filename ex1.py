@@ -7,15 +7,14 @@ import evaluate
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
 from transformers import DataCollatorWithPadding
 from transformers import pipeline
+import torch
 
 # ===============================      Global Variables:      ===============================
 
 STT2_DATASET_HF_PATH = "sst2"
 EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased"), ("roberta-base", "roberta-base"),
                      ("electra-base-generator", "google/electra-base-generator")]
-
-# EXPERIMENT_MODELS = ["bert-base-uncased"]
-
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # ===============================      Static Functions:      ===============================
 
@@ -59,7 +58,7 @@ def train_pipeline(model_name, train_set, val_sel, seed, output_dir):
     # Load model and tokenizer:
     config = AutoConfig.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config).to(DEVICE)
 
     # Tokenize datasets:
     tokenizer_function = outer_tokenizer_function(tokenizer)
