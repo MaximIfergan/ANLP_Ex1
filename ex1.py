@@ -11,8 +11,8 @@ from transformers import pipeline
 # ===============================      Global Variables:      ===============================
 
 STT2_DATASET_HF_PATH = "sst2"
-# EXPERIMENT_MODELS = ["bert-base-uncased", "roberta-base", "google/electra-base-generator"]
-EXPERIMENT_MODELS = ["bert-base-uncased"]
+EXPERIMENT_MODELS = ["bert-base-uncased", "roberta-base", "google/electra-base-generator"]
+# EXPERIMENT_MODELS = ["bert-base-uncased"]
 
 
 # ===============================      Static Functions:      ===============================
