@@ -71,7 +71,7 @@ def train_pipeline(model_name, train_set, val_sel, seed, output_dir):
     # Load model and tokenizer:
     config = AutoConfig.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config).to(DEVICE)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config, num_labels=2).to(DEVICE)
 
     # Tokenize datasets:
     tokenizer_function = outer_tokenizer_function(tokenizer)
@@ -85,7 +85,8 @@ def train_pipeline(model_name, train_set, val_sel, seed, output_dir):
     training_args = TrainingArguments(output_dir=output_dir,
                                       save_strategy="no",
                                       seed=seed,
-                                      report_to="wandb")
+                                      report_to="wandb",
+                                      logging_steps=100)
     # evaluation_strategy = "epoch",
 
     # Init training:
@@ -127,12 +128,11 @@ def create_res_file(model_results, output):
         # TODO add prediction time
 
 
-def predictions(test_set):
-    # TODO write this function:
-
-    text = "This was a masterpiece. Not completely faithful to the books, but enthralling from beginning to end. Might be my favorite of the three."
-    classifier = pipeline("sentiment-analysis", model="my_awesome_model")
-    classifier(text)
+def predictions(test_set, model_dir):
+    classifier = pipeline("sentiment-analysis", model=model_dir)
+    for example in test_set:
+        res = classifier(example[''])
+    print(res)
 
 
 def main(args):
@@ -172,13 +172,9 @@ def main(args):
 
 
 def debug():
-    output = "output"
-    model_name = "bert-base-uncased"
+
     train_set, val_sel, test_set = build_dataset(16, 16, 16)
-    model_dir = os.path.join(output, model_name)
-    os.mkdir(model_dir)
-    details = train_pipeline(model_name, train_set, val_sel, 2, model_dir)
-    print(details)
+    predictions(test_set, "output/bert-base-uncased/saved_model_seed_0")
 
 
 if __name__ == "__main__":
