@@ -11,7 +11,9 @@ from transformers import pipeline
 # ===============================      Global Variables:      ===============================
 
 STT2_DATASET_HF_PATH = "sst2"
-EXPERIMENT_MODELS = ["bert-base-uncased", "roberta-base", "google/electra-base-generator"]
+# EXPERIMENT_MODELS = ["bert-base-uncased", "roberta-base", "google/electra-base-generator"]
+EXPERIMENT_MODELS = ["bert-base-uncased"]
+
 
 # ===============================      Static Functions:      ===============================
 
@@ -22,9 +24,8 @@ def parse_args():
     parser.add_argument('seed_number', type=int, help='Number of seeds to be used for each model')
     parser.add_argument('train_num_examples', type=int, help='Number of samples to be used during training')
     parser.add_argument('val_num_examples', type=int, help='Number of samples to be used during validation')
-    parser.add_argument('test_num_examples', type=int,
-                        help='Number of samples for which the model will predict a sentiment')
-    parser.add_argument('output', default="", help='The output path')
+    parser.add_argument('test_num_examples', type=int, help='Number of samples to be predicted')
+    parser.add_argument('--output', default="", help='The output path')
     args = parser.parse_args()
     return args
 
@@ -70,6 +71,7 @@ def train_pipeline(model_name, train_set, val_sel, seed, output_dir):
     training_args = TrainingArguments(output_dir=output_dir,
                                       save_strategy="no",
                                       seed=seed)
+    # evaluation_strategy = "epoch",
 
     # Init training:
     trainer = Trainer(
@@ -81,14 +83,31 @@ def train_pipeline(model_name, train_set, val_sel, seed, output_dir):
         data_collator=data_collator,
         compute_metrics=compute_metrics,
     )
-    result = trainer.train()
+
+    train_details = trainer.train()
+    validation_details = trainer.evaluate()
 
     # Save model:
-    model_path = os.path.join(output_dir, "saved_model")
+    model_path = os.path.join(output_dir, f"saved_model_seed_{seed}")
     os.mkdir(model_path)
     trainer.save_model(model_path)
 
-    return result
+    return {"train_runtime": train_details.metrics["train_runtime"],
+            "validation_accuracy": validation_details["eval_accuracy"]}
+
+
+def create_res_file(model_results, output):
+    with open(os.path.join(output, "res.txt"), 'w') as fp:
+        total_train_time = 0
+        for model_name in model_results:
+            total_train_time += model_results[model_name]["train_time"]
+            fp.write(model_name + ",")
+            fp.write(str(round(model_results[model_name]["val_accuracy_mean"], 3)) + ",")
+            fp.write(str(round(model_results[model_name]["val_accuracy_std"], 3)) + "\n")
+        fp.write("----" + "\n")
+        fp.write("train time" + "," + str(round(total_train_time, 3)) + "\n")
+
+        # TODO add prediction time
 
 
 def predictions(test_set):
@@ -101,13 +120,51 @@ def predictions(test_set):
 
 def main(args):
 
-    train_set, val_sel, test_set = build_dataset(args.train_num_examples, args.val_num_examples, args.test_num_examples)
+    train_num_examples = args.train_num_examples if args.train_num_examples != -1 else ""
+    val_num_examples = args.val_num_examples if args.val_num_examples != -1 else ""
+    test_num_examples = args.test_num_examples if args.test_num_examples != -1 else ""
+
+    train_set, val_sel, test_set = build_dataset(train_num_examples, val_num_examples, test_num_examples)
+
+    model_results = {}
 
     for model_name in EXPERIMENT_MODELS:
+
+        val_accuracy = []
+        train_time = []
+
+        model_dir = os.path.join(args.output, model_name)
+        os.mkdir(model_dir)
+
         for seed in range(args.seed_number):
-            train_pipeline(model_name, train_set, val_sel, args.seed, args.output)
+            details = train_pipeline(model_name, train_set, val_sel, seed, model_dir)
+            val_accuracy.append(details["validation_accuracy"])
+            train_time.append(details["train_runtime"])
+
+        val_accuracy_mean = np.mean(val_accuracy)
+        val_accuracy_std = np.std(val_accuracy)
+
+        model_results[model_name] = {"val_accuracy_mean": val_accuracy_mean, 'val_accuracy_std': val_accuracy_std,
+                                     "seeds_accuracy": val_accuracy, 'train_time': np.sum(train_time)}
+
+
+    print(model_results)
+    create_res_file(model_results, args.output)
+
+    # TODO prediction on best model
+
+
+def debug():
+    output = "output"
+    model_name = "bert-base-uncased"
+    train_set, val_sel, test_set = build_dataset(16, 16, 16)
+    model_dir = os.path.join(output, model_name)
+    os.mkdir(model_dir)
+    details = train_pipeline(model_name, train_set, val_sel, 2, model_dir)
+    print(details)
 
 
 if __name__ == "__main__":
     args = parse_args()
     main(args)
+    # debug()
