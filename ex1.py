@@ -10,14 +10,15 @@ from transformers import AutoModelForSequenceClassification, TrainingArguments, 
 from transformers import DataCollatorWithPadding
 from transformers import pipeline
 import torch
+import time
 
 # ===============================      Global Variables:      ===============================
 
 STT2_DATASET_HF_PATH = "sst2"
-# EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased"), ("roberta-base", "roberta-base"),
-#                      ("electra-base-generator", "google/electra-base-generator")]
-EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased")]
+EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased"), ("roberta-base", "roberta-base"),
+                     ("electra-base-generator", "google/electra-base-generator")]
 
+# EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased")] # For Debug # TODO delete!
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # ===============================      Static Functions:      ===============================
@@ -71,7 +72,7 @@ def train_pipeline(model_name, train_set, val_sel, seed, output_dir):
     # Load model and tokenizer:
     config = AutoConfig.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config, num_labels=2).to(DEVICE)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config).to(DEVICE)
 
     # Tokenize datasets:
     tokenizer_function = outer_tokenizer_function(tokenizer)
@@ -114,7 +115,7 @@ def train_pipeline(model_name, train_set, val_sel, seed, output_dir):
             "validation_accuracy": validation_details["eval_accuracy"]}
 
 
-def create_res_file(model_results, output):
+def create_res_file(model_results, output, prediction_time):
     with open(os.path.join(output, "res.txt"), 'w') as fp:
         total_train_time = 0
         for model_name in model_results:
@@ -124,15 +125,34 @@ def create_res_file(model_results, output):
             fp.write(str(round(model_results[model_name]["val_accuracy_std"], 3)) + "\n")
         fp.write("----" + "\n")
         fp.write("train time" + "," + str(round(total_train_time, 3)) + "\n")
+        fp.write("predict time" + "," + str(round(prediction_time, 3)))
 
-        # TODO add prediction time
+
+def predictions(test_set, model_dir, output):
+
+    classifier = pipeline("sentiment-analysis", model=model_dir, device=0)
+    # classifier = pipeline("sentiment-analysis", model=model_dir)  # No Cuda:
+
+    start_time = time.perf_counter()
+    labels = classifier(test_set['sentence'])
+    end_time = time.perf_counter()
+
+    file_lines = [test_set['sentence'][i] + '###' + labels[i]['label'][6:] for i in range(len(labels))]
+    with open(os.path.join(output, "predictions.txt"), 'w') as fp:
+        fp.write("\n".join(file_lines))
+
+    return end_time - start_time
 
 
-def predictions(test_set, model_dir):
-    classifier = pipeline("sentiment-analysis", model=model_dir)
-    for example in test_set:
-        res = classifier(example[''])
-    print(res)
+def find_predictions_model(models_results, output):
+    best_model = None
+    for model_name in models_results:
+        if best_model is None or models_results[model_name]['val_accuracy_mean'] > best_model[1]:
+            best_model = (model_name, models_results[model_name]['val_accuracy_mean'])
+    best_seed = np.argmax(models_results[best_model[0]]["seeds_accuracy"])
+    best_mode_seed_path = os.path.join(output, best_model[0])
+    best_mode_seed_path = os.path.join(best_mode_seed_path, f"saved_model_seed_{best_seed}")
+    return best_mode_seed_path
 
 
 def main(args):
@@ -143,7 +163,7 @@ def main(args):
 
     train_set, val_sel, test_set = build_dataset(train_num_examples, val_num_examples, test_num_examples)
 
-    model_results = {}
+    models_results = {}
 
     for model_name, model_dir in EXPERIMENT_MODELS:
 
@@ -161,23 +181,19 @@ def main(args):
         val_accuracy_mean = np.mean(val_accuracy)
         val_accuracy_std = np.std(val_accuracy)
 
-        model_results[model_name] = {"val_accuracy_mean": val_accuracy_mean, 'val_accuracy_std': val_accuracy_std,
+        models_results[model_name] = {"val_accuracy_mean": val_accuracy_mean, 'val_accuracy_std': val_accuracy_std,
                                      "seeds_accuracy": val_accuracy, 'train_time': np.sum(train_time)}
 
+    print("========== Models Results ==========")
+    print(models_results)
 
-    print(model_results)
-    create_res_file(model_results, args.output)
+    best_mode_seed_path = find_predictions_model(models_results, args.output)
+    print(f"Predictions model: {best_mode_seed_path}")
+    predictions_time = predictions(test_set, best_mode_seed_path, args.output)
 
-    # TODO prediction on best model
-
-
-def debug():
-
-    train_set, val_sel, test_set = build_dataset(16, 16, 16)
-    predictions(test_set, "output/bert-base-uncased/saved_model_seed_0")
+    create_res_file(models_results, args.output, predictions_time)
 
 
 if __name__ == "__main__":
     args = parse_args()
     main(args)
-    # debug()
