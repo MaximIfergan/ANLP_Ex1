@@ -5,3 +5,4 @@ transformers~=4.29.2
 scikit-learn
 torch
 accelerate
+wandb

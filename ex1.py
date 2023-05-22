@@ -1,5 +1,7 @@
 import os
 import argparse
+
+import wandb
 from datasets import load_dataset
 from transformers import AutoConfig, AutoTokenizer, AutoModel
 import numpy as np
@@ -12,8 +14,10 @@ import torch
 # ===============================      Global Variables:      ===============================
 
 STT2_DATASET_HF_PATH = "sst2"
-EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased"), ("roberta-base", "roberta-base"),
-                     ("electra-base-generator", "google/electra-base-generator")]
+# EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased"), ("roberta-base", "roberta-base"),
+#                      ("electra-base-generator", "google/electra-base-generator")]
+EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased")]
+
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # ===============================      Static Functions:      ===============================
@@ -55,6 +59,15 @@ def build_dataset(train_num_examples, val_num_examples, test_num_examples):
 
 def train_pipeline(model_name, train_set, val_sel, seed, output_dir):
 
+    wandb.login(key="5028a3fdc48caac16f85893a6e275eb36bb8eba5")
+    wandb.init(project="ANLP-Ex1", entity="maxim-ifergan")
+    wandb.config = {
+        "Model": model_name,
+        "SEED": seed
+    }
+
+    wandb.run.name = f'{model_name}_seed_{seed}'
+
     # Load model and tokenizer:
     config = AutoConfig.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -71,7 +84,8 @@ def train_pipeline(model_name, train_set, val_sel, seed, output_dir):
     compute_metrics = outer_compute_metrics(accuracy)
     training_args = TrainingArguments(output_dir=output_dir,
                                       save_strategy="no",
-                                      seed=seed)
+                                      seed=seed,
+                                      report_to="wandb")
     # evaluation_strategy = "epoch",
 
     # Init training:
@@ -92,6 +106,8 @@ def train_pipeline(model_name, train_set, val_sel, seed, output_dir):
     model_path = os.path.join(output_dir, f"saved_model_seed_{seed}")
     os.mkdir(model_path)
     trainer.save_model(model_path)
+
+    wandb.finish()
 
     return {"train_runtime": train_details.metrics["train_runtime"],
             "validation_accuracy": validation_details["eval_accuracy"]}
