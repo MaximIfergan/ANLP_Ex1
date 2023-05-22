@@ -11,7 +11,9 @@ from transformers import pipeline
 # ===============================      Global Variables:      ===============================
 
 STT2_DATASET_HF_PATH = "sst2"
-EXPERIMENT_MODELS = ["bert-base-uncased", "roberta-base", "google/electra-base-generator"]
+EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased"), ("roberta-base", "roberta-base"),
+                     ("electra-base-generator", "google/electra-base-generator")]
+
 # EXPERIMENT_MODELS = ["bert-base-uncased"]
 
 
@@ -128,16 +130,16 @@ def main(args):
 
     model_results = {}
 
-    for model_name in EXPERIMENT_MODELS:
+    for model_name, model_dir in EXPERIMENT_MODELS:
 
         val_accuracy = []
         train_time = []
 
-        model_dir = os.path.join(args.output, model_name)
-        os.mkdir(model_dir)
+        model_out_dir = os.path.join(args.output, model_name)
+        os.mkdir(model_out_dir)
 
         for seed in range(args.seed_number):
-            details = train_pipeline(model_name, train_set, val_sel, seed, model_dir)
+            details = train_pipeline(model_dir, train_set, val_sel, seed, model_out_dir)
             val_accuracy.append(details["validation_accuracy"])
             train_time.append(details["train_runtime"])
 
