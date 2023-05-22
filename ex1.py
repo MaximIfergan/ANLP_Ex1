@@ -163,6 +163,11 @@ def main(args):
 
     train_set, val_sel, test_set = build_dataset(train_num_examples, val_num_examples, test_num_examples)
 
+    print("===== Datasets Size: =====")
+    print(f"train set: {len(train_set)}")
+    print(f"validation set: {len(val_sel)}")
+    print(f"test set: {len(test_set)}")
+
     models_results = {}
 
     for model_name, model_dir in EXPERIMENT_MODELS:
