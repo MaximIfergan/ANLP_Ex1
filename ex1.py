@@ -16,8 +16,6 @@ import time
 STT2_DATASET_HF_PATH = "sst2"
 EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased"), ("roberta-base", "roberta-base"),
                      ("electra-base-generator", "google/electra-base-generator")]
-
-# EXPERIMENT_MODELS = [("bert-base-uncased", "bert-base-uncased")] # For Debug # TODO delete!
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # ===============================      Static Functions:      ===============================
