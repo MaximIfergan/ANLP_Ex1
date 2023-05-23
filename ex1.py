@@ -37,6 +37,7 @@ def outer_tokenizer_function(tokenizer):
     """ Given a tokenizer the function returns a tokenizer function with the adjusted parameters """
     def inner_tokenizer_function(examples):
         """ this function tokenize the examples """
+        # max_length: "If left unset or set to None, this will use the predefined model maximum length"
         return tokenizer(examples["sentence"], truncation=True)
     return inner_tokenizer_function
 
@@ -96,7 +97,7 @@ def train_pipeline(model_dir, train_set, val_sel, seed, output_dir):
     tokenizer_function = outer_tokenizer_function(tokenizer)
     tokenized_train = train_set.map(tokenizer_function, batched=True)
     tokenized_val = val_sel.map(tokenizer_function, batched=True)
-    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)  # dynamic padding
 
     # Set Loss metric:
     accuracy = evaluate.load("accuracy")
