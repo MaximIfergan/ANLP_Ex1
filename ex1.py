@@ -80,13 +80,13 @@ def train_pipeline(model_dir, train_set, val_sel, seed, output_dir):
     """
 
     # Set the logs of wandb:
-    wandb.login(key="5028a3fdc48caac16f85893a6e275eb36bb8eba5")
-    wandb.init(project="ANLP-Ex1", entity="maxim-ifergan")
-    wandb.config = {
-        "Model": model_dir,
-        "SEED": seed
-    }
-    wandb.run.name = f'{model_dir}_seed_{seed}'
+    # wandb.login(key="5028a3fdc48caac16f85893a6e275eb36bb8eba5")
+    # wandb.init(project="ANLP-Ex1", entity="maxim-ifergan")
+    # wandb.config = {
+    #     "Model": model_dir,
+    #     "SEED": seed
+    # }
+    # wandb.run.name = f'{model_dir}_seed_{seed}'
 
     # Load model and tokenizer:
     config = AutoConfig.from_pretrained(model_dir)
@@ -105,7 +105,9 @@ def train_pipeline(model_dir, train_set, val_sel, seed, output_dir):
 
     # Set the trainer parameters:
     training_args = TrainingArguments(
-        output_dir=output_dir, save_strategy="no", seed=seed, report_to="wandb", logging_steps=100)
+        output_dir=output_dir, save_strategy="no", seed=seed,
+        # report_to="wandb",
+        logging_steps=100)
     trainer = Trainer(
         model=model, args=training_args, train_dataset=tokenized_train, eval_dataset=tokenized_val, tokenizer=tokenizer,
         data_collator=data_collator, compute_metrics=compute_metrics)
@@ -120,7 +122,7 @@ def train_pipeline(model_dir, train_set, val_sel, seed, output_dir):
     model_path = os.path.join(output_dir, f"saved_model_seed_{seed}")
     os.mkdir(model_path)
     trainer.save_model(model_path)
-    wandb.finish()
+    # wandb.finish()
 
     return {"train_runtime": train_details.metrics["train_runtime"],
             "validation_accuracy": validation_details["eval_accuracy"]}
