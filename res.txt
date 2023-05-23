@@ -1,6 +1,6 @@
-<model name>,<mean accuracy> +- <accuracy std>
-<model name>,<mean accuracy> +- <accuracy std>
-<model name>,<mean accuracy> +- <accuracy std>
+bert-base-uncased,0.909,0.01
+roberta-base,0.638,0.183
+electra-base-generator,0.896,0.001
 ----
-train time,<train time in seconds>
-predict time,<predict time in seconds>
+train time,8627.961
+predict time,9.648
