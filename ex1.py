@@ -160,7 +160,7 @@ def predictions(test_set, model_dir, output):
 
     # Generate predictions:
     start_time = time.perf_counter()
-    labels = classifier(test_set['sentence'])
+    labels = classifier(test_set['sentence'])  # 'padding' argument defaults to False (meaning, No padding)
     end_time = time.perf_counter()
 
     # Save predictions in the output file:
